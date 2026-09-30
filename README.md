@@ -246,3 +246,58 @@ docker compose down
 
 ° Uso de herramientas (Tools - Cálculos):
   **http://localhost:8000/api/chat?usuarioId=user123&mensaje=Calcula%20el%20promedio%20de%208.5,%209.0%20y%207.5**
+
+## Resumen de la Arquitectura del Agente FAQ
+1- Configuración Centralizada (`AiConfig`):
+
+🐾 Se centralizó la inyección de dependencias mediante `@Bean` en una clase de configuración, evitando conflictos de beans con Spring Boot y manteniendo un control estricto sobre los componentes.
+
+🐾 Se configuró el modelo de lenguaje de Groq (`OpenAiChatModel`) con una temperatura de `0.7` para equilibrar creatividad y precisión en las respuestas académicas.
+
+2- Capa RAG y Base de Datos Vectorial (`Pgvector` + `Apache PDFBox`):
+
+🐾 Al iniciar la aplicación, se escanea la carpeta de recursos para procesar automáticamente los documentos PDF institucionales utilizando el parser de PDFBox.
+
+🐾 Los fragmentos de texto (TextSegments) se vectorizan mediante un modelo local ligero (`AllMiniLmL6V2EmbeddingModel`) y se almacenan en una base de datos PostgreSQL utilizando la extensión pgvector.
+
+🐾 El `ContentRetriever` filtra y recupera los fragmentos más relevantes (con umbrales de puntuación definidos) para alimentar contextualmente al modelo.
+
+3- Memoria Conversacional Persistente:
+
+🐾 Se implementó un proveedor de memoria (`ChatMemoryProvider`) respaldado por `PostgresChatMemoryStore`, lo que permite que el agente recuerde el historial de chat de cada usuario (`@MemoryId`) de forma persistente.
+
+4- Orquestación y Herramientas Autónomas (`AsistenteService` & `AsistenteTools`):
+
+🐾 El servicio del agente (`AsistenteService`) define un prompt de sistema estricto que exige un flujo obligatorio: consultar primero el buscador de PDFs (RAG), reportar la metadata y finalmente estructurar una respuesta didáctica citando fuentes (archivo y página).
+
+🐾 El LLM decide de manera autónoma cuándo invocar las herramientas de `AsistenteTools` según la pregunta del estudiante.
+
+````mermaid
+graph TD
+%% Definición de estilos y componentes
+    User([Estudiante / Cliente HTTP]) -->|GET /api/chat?usuarioId=&mensaje=| Controller[Controlador REST]
+
+    subgraph SpringBoot["Spring Boot Application (Docker Container)"]
+        Controller --> Asistente[AsistenteService <br/> AiServices.builder]
+
+        subgraph GroqLLM["Groq LLM Layer"]
+            Asistente -->|Razonamiento y Orquestación| Groq[Groq Cloud LLM]
+        end
+
+        subgraph ToolingRAG["Tooling & RAG"]
+            Groq -->|1. Busca en PDFs| Retriever[ContentRetriever]
+            Retriever -->|Similitud Vectorial| PgVector[(PostgreSQL + pgvector)]
+            Retriever -->|Fragmentos relevantes| Groq
+            Groq -->|2. Ejecuta lógica auxiliar| Tools[AsistenteTools <br/> Cálculos, Hora, Reportes]
+        end
+
+        subgraph Persistence["Persistence"]
+            Asistente -->|Historial de Conversación| Memory[PostgresChatMemoryStore]
+            Memory --> PgVector
+        end
+    end
+
+    Asistente -->|3. Respuesta Final Citada| Controller
+    Controller --> User
+
+````
