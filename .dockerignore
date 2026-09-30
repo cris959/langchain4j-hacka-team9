@@ -1,0 +1,24 @@
+# Directorios de compilación e IDEs
+target/
+.gradle/
+build/
+.settings/
+.classpath
+.project
+.idea/
+*.iml
+
+# Control de versiones
+.git/
+.gitignore
+
+# Archivos de entorno locales (para no filtrar secretos al contenedor)
+.env
+
+# Documentación de Docker o archivos markdown del proyecto
+README.md
+docker-compose.yml
+
+# Archivos del sistema operativo
+Thumbs.db
+.DS_Store

@@ -1,0 +1,35 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: postgres_vector_container
+    environment:
+      POSTGRES_DB: langchain4j_demo
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER} -d langchain4j_demo" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    container_name: langchain4j_app
+    ports:
+       - "8000:8000"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/langchain4j_demo
+      - SPRING_DATASOURCE_USERNAME=${DB_USER}
+      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - GROQ_MODEL_NAME=${GROQ_MODEL_NAME:-openai/gpt-oss-20b}
+      - GROQ_BASE_URL=https://api.groq.com/openai/v1
+    depends_on:
+      postgres:
+        condition: service_healthy
+volumes:
+  pgdata:
