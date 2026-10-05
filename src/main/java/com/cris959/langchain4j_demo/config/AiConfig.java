@@ -2,9 +2,7 @@ package com.cris959.langchain4j_demo.config;
 
 import com.cris959.langchain4j_demo.service.AsistenteService;
 import com.cris959.langchain4j_demo.tools.AsistenteTools;
-import dev.langchain4j.data.document.Document;
-import dev.langchain4j.data.document.loader.FileSystemDocumentLoader;
-import dev.langchain4j.data.document.parser.apache.pdfbox.ApachePdfBoxDocumentParser;
+import com.cris959.langchain4j_demo.tools.WebSearchTools;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -18,13 +16,14 @@ import dev.langchain4j.service.AiServices;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
 import dev.langchain4j.store.embedding.pgvector.PgVectorEmbeddingStore;
+import dev.langchain4j.web.search.WebSearchEngine;
+import dev.langchain4j.web.search.tavily.TavilyWebSearchEngine;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 
-import java.nio.file.Path;
 import java.util.List;
 
 @Configuration
@@ -68,9 +67,9 @@ public class AiConfig {
     }
 
     @Bean
-    public EmbeddingStore<TextSegment> embeddingStore(EmbeddingModel embeddingModel) {
-        EmbeddingStore<TextSegment> store = PgVectorEmbeddingStore.builder()
-                .host("postgres") // para local # localhost #
+    public EmbeddingStore<TextSegment> embeddingStore() {
+        return PgVectorEmbeddingStore.builder()
+                .host("postgres") // o "localhost" según tu entorno
                 .port(5432)
                 .database("langchain4j_demo")
                 .user(dbUser)
@@ -78,28 +77,6 @@ public class AiConfig {
                 .table("embeddings")
                 .dimension(384)
                 .build();
-
-        try {
-            Resource resource = resourceLoader.getResource("classpath:documents");
-            if (resource.exists() && resource.getFile().exists()) {
-                Path path = resource.getFile().toPath();
-
-                // Cargamos los documentos pasando correctamente el parser de PDF de Apache PDFBox
-                List<Document> documents = FileSystemDocumentLoader.loadDocuments(path, new ApachePdfBoxDocumentParser());
-
-                if (!documents.isEmpty()) {
-                    EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
-                            .embeddingModel(embeddingModel)
-                            .embeddingStore(store)
-                            .build();
-                    ingestor.ingest(documents);
-                }
-            }
-        } catch (Exception e) {
-            System.out.println("Aviso: No se pudo cargar la carpeta 'documents' en el arranque: " + e.getMessage());
-        }
-
-        return store;
     }
 
     @Bean
@@ -113,23 +90,73 @@ public class AiConfig {
                 .build();
     }
 
+
+    @Bean
+    public WebSearchEngine webSearchEngine(@Value("${TAVILY_API_KEY}") String tavilyApiKey) {
+        return TavilyWebSearchEngine.builder()
+                .apiKey(tavilyApiKey)
+
+                .build();
+    }
+
     @Bean
     public AsistenteService asistenteService(ChatLanguageModel chatLanguageModel,
                                              AsistenteTools asistenteTools,
-                                             ContentRetriever contentRetriever,
-                                             PostgresChatMemoryStore postgresChatMemoryStore) {
+                                             WebSearchTools webSearchTools,
+                                             PostgresChatMemoryStore postgresChatMemoryStore,
+                                             ContentRetriever contentRetriever) {
 
         ChatMemoryProvider memoryProvider = memoryId -> MessageWindowChatMemory.builder()
                 .id(memoryId)
-                .maxMessages(10)
+                .maxMessages(10) // Mantiene la ventana acotada para evitar desbordes en PostgreSQL
                 .chatMemoryStore(postgresChatMemoryStore)
                 .build();
 
         return AiServices.builder(AsistenteService.class)
                 .chatLanguageModel(chatLanguageModel)
                 .chatMemoryProvider(memoryProvider)
-                .tools(asistenteTools)
                 .contentRetriever(contentRetriever)
+                .tools(asistenteTools, webSearchTools)
                 .build();
+    }
+
+    /**
+     * Componente opcional para cargar los documentos al arrancar la app de forma segura.
+     */
+    @Bean
+    public CommandLineRunner initDocuments(EmbeddingStore<TextSegment> embeddingStore, EmbeddingModel embeddingModel) {
+        return args -> {
+            try {
+                org.springframework.core.io.support.ResourcePatternResolver resolver =
+                        new org.springframework.core.io.support.PathMatchingResourcePatternResolver();
+
+                // Busca todos los PDFs dentro de la carpeta documents en el classpath
+                org.springframework.core.io.Resource[] resources = resolver.getResources("classpath:documents/**/*.pdf");
+
+                List<dev.langchain4j.data.document.Document> documents = new java.util.ArrayList<>();
+
+                for (org.springframework.core.io.Resource resource : resources) {
+                    if (resource.exists() && resource.isReadable()) {
+                        try (java.io.InputStream inputStream = resource.getInputStream()) {
+                            dev.langchain4j.data.document.Document doc = new dev.langchain4j.data.document.parser.apache.pdfbox.ApachePdfBoxDocumentParser().parse(inputStream);
+                            documents.add(doc);
+                        }
+                    }
+                }
+
+                if (!documents.isEmpty()) {
+                    EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
+                            .embeddingModel(embeddingModel)
+                            .embeddingStore(embeddingStore)
+                            .build();
+                    ingestor.ingest(documents);
+                    System.out.println("-> [INFERENCIA] Documentos PDF cargados e ingeridos correctamente (" + documents.size() + " archivos).");
+                } else {
+                    System.out.println("-> [INFERENCIA] No se encontraron archivos PDF en 'classpath:documents'.");
+                }
+            } catch (Exception e) {
+                System.out.println("Aviso: No se pudo cargar la carpeta 'documents' en el arranque: " + e.getMessage());
+            }
+        };
     }
 }

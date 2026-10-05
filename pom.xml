@@ -1,18 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
 	<modelVersion>4.0.0</modelVersion>
+
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>3.3.3</version>
-		<relativePath/> <!-- lookup parent from repository -->
+		<relativePath/>
 	</parent>
+
 	<groupId>com.cris959</groupId>
 	<artifactId>langchain4j-demo</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
+
 	<name>langchain4j-demo</name>
-	<description>Proyecto de demostracion con LangChain4j y Spring Boot</description>
+	<description>Proyecto de demostración con LangChain4j y Spring Boot</description>
 
 	<properties>
 		<java.version>21</java.version>
@@ -20,55 +25,63 @@
 	</properties>
 
 	<dependencies>
+
 		<!-- Spring Boot Web -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
 
-		<!-- LangChain4j Spring Boot Starter -->
+		<!-- LangChain4j -->
+		<dependency>
+			<groupId>dev.langchain4j</groupId>
+			<artifactId>langchain4j</artifactId>
+			<version>${langchain4j.version}</version>
+		</dependency>
+
+		<!-- Integración Spring Boot de LangChain4j -->
 		<dependency>
 			<groupId>dev.langchain4j</groupId>
 			<artifactId>langchain4j-spring-boot-starter</artifactId>
 			<version>${langchain4j.version}</version>
 		</dependency>
 
-		<!-- Proveedor LLM (Ejemplo con OpenAI, puedes cambiarlo o agregar más) -->
+		<!-- Proveedor LLM: OpenAI -->
 		<dependency>
 			<groupId>dev.langchain4j</groupId>
 			<artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
 			<version>${langchain4j.version}</version>
 		</dependency>
 
-		<!-- Lombok -->
-		<dependency>
-			<groupId>org.projectlombok</groupId>
-			<artifactId>lombok</artifactId>
-			<optional>true</optional>
-		</dependency>
-
+		<!-- Modelo de embeddings local -->
 		<dependency>
 			<groupId>dev.langchain4j</groupId>
 			<artifactId>langchain4j-embeddings-all-minilm-l6-v2</artifactId>
-			<version>0.35.0</version>
+			<version>${langchain4j.version}</version>
 		</dependency>
 
+		<!-- Integración con PGVector -->
+		<dependency>
+			<groupId>dev.langchain4j</groupId>
+			<artifactId>langchain4j-pgvector</artifactId>
+			<version>${langchain4j.version}</version>
+		</dependency>
 
-			<!-- Sobrescribe commons-lang3 para solucionar CVE-2025-48924 -->
-			<dependency>
-				<groupId>org.apache.commons</groupId>
-				<artifactId>commons-lang3</artifactId>
-				<version>3.18.0</version>
-			</dependency>
+		<!-- Lectura de documentos PDF -->
+		<dependency>
+			<groupId>dev.langchain4j</groupId>
+			<artifactId>langchain4j-document-parser-apache-pdfbox</artifactId>
+			<version>${langchain4j.version}</version>
+		</dependency>
 
-			<!-- Sobrescribe ai.djl api para solucionar CVE-2025-0851 -->
-			<dependency>
-				<groupId>ai.djl</groupId>
-				<artifactId>api</artifactId>
-				<version>0.31.1</version>
-			</dependency>
+		<!-- Web Search con Tavily -->
+		<dependency>
+			<groupId>dev.langchain4j</groupId>
+			<artifactId>langchain4j-web-search-engine-tavily</artifactId>
+			<version>${langchain4j.version}</version>
+		</dependency>
 
-
+		<!-- Base de datos -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa</artifactId>
@@ -80,6 +93,28 @@
 			<scope>runtime</scope>
 		</dependency>
 
+		<!-- Lombok -->
+		<dependency>
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+			<optional>true</optional>
+		</dependency>
+
+		<!-- Corrección de vulnerabilidad CVE-2025-48924 -->
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-lang3</artifactId>
+			<version>3.18.0</version>
+		</dependency>
+
+		<!-- Corrección de vulnerabilidad CVE-2025-0851 -->
+		<dependency>
+			<groupId>ai.djl</groupId>
+			<artifactId>api</artifactId>
+			<version>0.31.1</version>
+		</dependency>
+
+		<!-- Docker Compose -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-docker-compose</artifactId>
@@ -87,32 +122,23 @@
 			<optional>true</optional>
 		</dependency>
 
-		<dependency>
-			<groupId>dev.langchain4j</groupId>
-			<artifactId>langchain4j-pgvector</artifactId>
-			<version>0.35.0</version>
-		</dependency>
-<!-- para cargar PDF -->
-		<dependency>
-			<groupId>dev.langchain4j</groupId>
-			<artifactId>langchain4j-document-parser-apache-pdfbox</artifactId>
-			<version>0.35.0</version>
-		</dependency>
-
-		<!-- Spring Boot Test -->
+		<!-- Pruebas -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+
 	</dependencies>
 
 	<build>
 		<plugins>
+
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
+
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
@@ -125,6 +151,7 @@
 					</annotationProcessorPaths>
 				</configuration>
 			</plugin>
+
 		</plugins>
 	</build>
 

@@ -7,18 +7,18 @@ import dev.langchain4j.service.V;
 
 
 //@AiService
-@SystemMessage("""
-    Eres el Agente FAQ de una escuela online de programación.
-    Tu misión es responder dudas académicas recurrentes de los estudiantes
-    utilizando EXCLUSIVAMENTE la información de los PDFs institucionales.
-    
-    FLUJO OBLIGATORIO:
-    1. Primero invoca la herramienta de búsqueda en los PDFs con la pregunta del estudiante.
-    2. Luego invoca la herramienta de reporte con el resultado obtenido.
-    3. Devuelve el resultado final de forma didáctica, concisa y citando siempre la fuente (archivo + página).
-    """)
 public interface AsistenteService {
 
+    @SystemMessage("""
+        Eres el Agente FAQ de la escuela online CommunityLab.
+
+        INSTRUCCIÓN DE ENRUTAMIENTO OBLIGATORIA:
+        1. **Documentos Internos:** Utiliza la base de conocimiento vectorial EXCLUSIVAMENTE para responder sobre reglamentos, pagos, horarios o normas de CommunityLab.
+        2. **Búsqueda Web (buscarEnInternet):** TIENES LA OBLIGACIÓN de usar esta herramienta siempre que te pregunten por tecnologías, librerías, frameworks o herramientas de desarrollo externas (ej: **LangChain4j**, **Spring AI**, **Spring Boot**, **Java**, errores de código o novedades técnicas).
+
+        REQUISITO:
+        - Si la pregunta es técnica (como la de LangChain4j), ESTÁS OBLIGADO A LLAMAR A LA HERRAMIENTA. No digas que no hay datos sin antes intentar buscar.
+        """)
     @UserMessage("{{mensaje}}")
     String conversar(@MemoryId String usuarioId, @V("mensaje") String mensaje);
 }
